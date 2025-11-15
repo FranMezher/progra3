@@ -18,6 +18,9 @@ public class GreedyService {
 
     @Autowired
     private LocationRepository locationRepository;
+    
+    @Autowired
+    private GraphService graphService;
 
     public RouteResponse solveTSPGreedy(String startName) {
         Optional<Location> startOpt = locationRepository.findByName(startName);
@@ -37,6 +40,12 @@ public class GreedyService {
             return response;
         }
 
+        // Asegurar que start esté en la lista con sus relaciones
+        start = allLocations.stream()
+            .filter(l -> l.getId().equals(startOpt.get().getId()))
+            .findFirst()
+            .orElse(start);
+
         Set<Location> visited = new HashSet<>();
         List<String> path = new ArrayList<>();
         Location current = start;
@@ -49,6 +58,11 @@ public class GreedyService {
 
         // Algoritmo Greedy: siempre elegir la ubicación más cercana no visitada
         while (visited.size() < allLocations.size()) {
+            // Cargar relaciones si no están cargadas
+            if (current.getRoutes() == null || current.getRoutes().isEmpty()) {
+                current = graphService.loadLocationWithRoutes(current);
+            }
+            
             Location nearest = null;
             Route nearestRoute = null;
             double minDistance = Double.MAX_VALUE;

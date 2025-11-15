@@ -30,15 +30,33 @@ public class KruskalService {
 
         // Recopilar todas las aristas
         List<Edge> edges = new ArrayList<>();
-        Map<Location, Long> locationToId = new HashMap<>();
-        long id = 0;
+        Map<Long, Long> locationIdToIndex = new HashMap<>();
+        long index = 0;
         for (Location loc : allLocations) {
-            locationToId.put(loc, id++);
-            for (Route route : loc.getRoutes()) {
-                Location dest = route.getDestination();
+            locationIdToIndex.put(loc.getId(), index++);
+        }
+        
+        // Crear mapa de nombres a ubicaciones para buscar destinos
+        Map<String, Location> nameToLocation = new HashMap<>();
+        for (Location loc : allLocations) {
+            nameToLocation.put(loc.getName(), loc);
+        }
+        
+        // Recopilar aristas usando queries directas para obtener relaciones
+        for (Location loc : allLocations) {
+            List<Object[]> routes = locationRepository.findRoutesFromLocation(loc.getName());
+            for (Object[] routeData : routes) {
+                Location dest = (Location) routeData[0];
+                Double distance = (Double) routeData[1];
+                Integer duration = (Integer) routeData[2];
+                Double cost = (Double) routeData[3];
+                
                 // Evitar duplicados (grafo no dirigido)
-                if (locationToId.containsKey(dest) && locationToId.get(loc) < locationToId.get(dest)) {
-                    edges.add(new Edge(loc, dest, route.getDistance(), route));
+                Long locIndex = locationIdToIndex.get(loc.getId());
+                Long destIndex = locationIdToIndex.get(dest.getId());
+                if (locIndex != null && destIndex != null && locIndex < destIndex) {
+                    Route route = new Route(dest, distance, duration, cost, "highway");
+                    edges.add(new Edge(loc, dest, distance, route));
                 }
             }
         }
@@ -55,10 +73,10 @@ public class KruskalService {
 
         // Algoritmo de Kruskal
         for (Edge edge : edges) {
-            long uId = locationToId.get(edge.from);
-            long vId = locationToId.get(edge.to);
+            Long uId = locationIdToIndex.get(edge.from.getId());
+            Long vId = locationIdToIndex.get(edge.to.getId());
 
-            if (uf.find(uId) != uf.find(vId)) {
+            if (uId != null && vId != null && uf.find(uId) != uf.find(vId)) {
                 uf.union(uId, vId);
                 mstPath.add(edge.from.getName() + " -> " + edge.to.getName());
                 totalDistance += edge.weight;

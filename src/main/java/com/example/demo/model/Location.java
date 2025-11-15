@@ -1,5 +1,6 @@
 package com.example.demo.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Property;
@@ -27,6 +28,7 @@ public class Location {
     private String type; // "city", "poi", "intersection", etc.
 
     @Relationship(type = "CONNECTED_TO", direction = Relationship.Direction.OUTGOING)
+    @JsonIgnore  // Evitar recursión infinita en JSON
     private Set<Route> routes = new HashSet<>();
 
     // Constructors

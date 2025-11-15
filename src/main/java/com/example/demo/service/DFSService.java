@@ -14,24 +14,37 @@ public class DFSService {
 
     @Autowired
     private LocationRepository locationRepository;
+    
+    @Autowired
+    private GraphService graphService;
 
     /**
      * DFS: Explora todas las rutas posibles desde un origen hasta un destino
      * (exploración profunda)
      */
     public RouteResponse findAllRoutes(String startName, String endName) {
-        Optional<Location> startOpt = locationRepository.findByName(startName);
-        Optional<Location> endOpt = locationRepository.findByName(endName);
+        // Cargar todas las ubicaciones con sus relaciones
+        List<Location> allLocations = locationRepository.findAll();
+        Optional<Location> startOpt = allLocations.stream()
+            .filter(l -> l.getName().equals(startName))
+            .findFirst();
+        Optional<Location> endOpt = allLocations.stream()
+            .filter(l -> l.getName().equals(endName))
+            .findFirst();
 
         if (startOpt.isEmpty() || endOpt.isEmpty()) {
             RouteResponse response = new RouteResponse();
-            response.setMessage("Ubicación no encontrada");
+            response.setMessage("Ubicación no encontrada. Start: " + startName + ", End: " + endName);
             response.setAlgorithm("DFS");
             return response;
         }
 
         Location start = startOpt.get();
         Location end = endOpt.get();
+        
+        // Cargar con relaciones
+        start = graphService.loadLocationWithRoutes(start);
+        end = graphService.loadLocationWithRoutes(end);
 
         List<List<String>> allPaths = new ArrayList<>();
         Set<String> visited = new HashSet<>();
@@ -60,6 +73,11 @@ public class DFSService {
 
     private void dfsRecursive(Location current, Location target, Set<String> visited,
                              List<String> currentPath, List<List<String>> allPaths) {
+        // Cargar relaciones si no están cargadas
+        if (current.getRoutes() == null || current.getRoutes().isEmpty()) {
+            current = graphService.loadLocationWithRoutes(current);
+        }
+        
         if (current.getId().equals(target.getId())) {
             // Found a path
             List<String> path = new ArrayList<>(currentPath);

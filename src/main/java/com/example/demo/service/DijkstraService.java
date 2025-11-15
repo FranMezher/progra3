@@ -14,18 +14,27 @@ public class DijkstraService {
 
     @Autowired
     private LocationRepository locationRepository;
+    
+    @Autowired
+    private GraphService graphService;
 
     /**
      * Dijkstra: Encuentra la ruta más corta entre dos ubicaciones
      * Considera la distancia como peso
      */
     public RouteResponse findShortestPath(String startName, String endName) {
-        Optional<Location> startOpt = locationRepository.findByName(startName);
-        Optional<Location> endOpt = locationRepository.findByName(endName);
+        // Cargar todas las ubicaciones con sus relaciones
+        List<Location> allLocations = locationRepository.findAll();
+        Optional<Location> startOpt = allLocations.stream()
+            .filter(l -> l.getName().equals(startName))
+            .findFirst();
+        Optional<Location> endOpt = allLocations.stream()
+            .filter(l -> l.getName().equals(endName))
+            .findFirst();
 
         if (startOpt.isEmpty() || endOpt.isEmpty()) {
             RouteResponse response = new RouteResponse();
-            response.setMessage("Ubicación no encontrada");
+            response.setMessage("Ubicación no encontrada. Start: " + startName + ", End: " + endName);
             response.setAlgorithm("Dijkstra");
             return response;
         }
@@ -41,8 +50,7 @@ public class DijkstraService {
             Comparator.comparingDouble(distances::get)
         );
 
-        // Initialize distances
-        List<Location> allLocations = locationRepository.findAll();
+        // Initialize distances - usar todas las ubicaciones cargadas
         for (Location loc : allLocations) {
             distances.put(loc, Double.MAX_VALUE);
         }
@@ -58,6 +66,11 @@ public class DijkstraService {
                 break; // Found destination
             }
 
+            // Cargar relaciones si no están cargadas
+            if (current.getRoutes() == null || current.getRoutes().isEmpty()) {
+                current = graphService.loadLocationWithRoutes(current);
+            }
+            
             // Explore neighbors
             for (Route route : current.getRoutes()) {
                 Location neighbor = route.getDestination();

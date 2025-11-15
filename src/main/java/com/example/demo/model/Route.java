@@ -1,5 +1,6 @@
 package com.example.demo.model;
 
+import org.springframework.data.neo4j.core.schema.GeneratedValue;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Property;
 import org.springframework.data.neo4j.core.schema.RelationshipProperties;
@@ -11,6 +12,7 @@ import java.util.Objects;
 public class Route {
 
     @Id
+    @GeneratedValue
     private Long id;
 
     @Property("distance")
