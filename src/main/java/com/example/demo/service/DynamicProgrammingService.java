@@ -18,6 +18,9 @@ public class DynamicProgrammingService {
 
     @Autowired
     private LocationRepository locationRepository;
+    
+    @Autowired
+    private GraphService graphService;
 
     public RouteResponse solveTSPDynamic(String startName) {
         Optional<Location> startOpt = locationRepository.findByName(startName);
@@ -31,6 +34,28 @@ public class DynamicProgrammingService {
         Location start = startOpt.get();
         List<Location> allLocations = locationRepository.findAll();
         
+        // Cargar relaciones para todas las ubicaciones
+        Map<String, Location> nameToLocation = new HashMap<>();
+        for (Location loc : allLocations) {
+            nameToLocation.put(loc.getName(), loc);
+            if (loc.getRoutes() == null || loc.getRoutes().isEmpty()) {
+                graphService.loadLocationWithRoutes(loc);
+            }
+        }
+        
+        // Asegurar que start esté en la lista usando nombre
+        start = nameToLocation.get(startName);
+        if (start == null) {
+            RouteResponse response = new RouteResponse();
+            response.setMessage("Ubicación de inicio no encontrada: " + startName);
+            response.setAlgorithm("Dynamic Programming TSP");
+            return response;
+        }
+        
+        if (start.getRoutes() == null || start.getRoutes().isEmpty()) {
+            start = graphService.loadLocationWithRoutes(start);
+        }
+        
         if (allLocations.size() > 15) {
             RouteResponse response = new RouteResponse();
             response.setMessage("TSP con programación dinámica es muy costoso para más de 15 ubicaciones. Use Greedy en su lugar.");
@@ -41,26 +66,38 @@ public class DynamicProgrammingService {
         // Crear matriz de distancias
         int n = allLocations.size();
         double[][] dist = new double[n][n];
-        Map<Location, Integer> locationIndex = new HashMap<>();
+        Map<String, Integer> nameToIndex = new HashMap<>();
         
         for (int i = 0; i < n; i++) {
-            locationIndex.put(allLocations.get(i), i);
+            nameToIndex.put(allLocations.get(i).getName(), i);
         }
 
-        // Llenar matriz de distancias
+        // Llenar matriz de distancias - comparar por nombre en lugar de ID
         for (int i = 0; i < n; i++) {
             Location loc1 = allLocations.get(i);
+            if (loc1.getRoutes() == null || loc1.getRoutes().isEmpty()) {
+                loc1 = graphService.loadLocationWithRoutes(loc1);
+            }
+            
             for (int j = 0; j < n; j++) {
                 if (i == j) {
                     dist[i][j] = 0;
                 } else {
                     Location loc2 = allLocations.get(j);
+                    String loc2Name = loc2.getName();
                     double minDist = Double.MAX_VALUE;
-                    for (Route route : loc1.getRoutes()) {
-                        if (route.getDestination().getId().equals(loc2.getId())) {
-                            minDist = Math.min(minDist, route.getDistance());
+                    
+                    if (loc1.getRoutes() != null) {
+                        for (Route route : loc1.getRoutes()) {
+                            if (route != null && route.getDestination() != null && 
+                                route.getDestination().getName().equals(loc2Name)) {
+                                if (route.getDistance() != null) {
+                                    minDist = Math.min(minDist, route.getDistance());
+                                }
+                            }
                         }
                     }
+                    
                     if (minDist == Double.MAX_VALUE) {
                         minDist = loc1.distanceTo(loc2); // Distancia geográfica
                     }
@@ -69,7 +106,7 @@ public class DynamicProgrammingService {
             }
         }
 
-        int startIdx = locationIndex.get(start);
+        int startIdx = nameToIndex.get(start.getName());
         int mask = 1 << startIdx;
         
         // Memoización: dp[mask][last] = distancia mínima

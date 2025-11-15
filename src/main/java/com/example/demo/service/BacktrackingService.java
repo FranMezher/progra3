@@ -18,6 +18,9 @@ public class BacktrackingService {
 
     @Autowired
     private LocationRepository locationRepository;
+    
+    @Autowired
+    private GraphService graphService;
 
     public RouteResponse findAllRoutes(String startName, String endName, Integer maxDepth) {
         Optional<Location> startOpt = locationRepository.findByName(startName);
@@ -34,11 +37,35 @@ public class BacktrackingService {
         Location end = endOpt.get();
         int maxDepthValue = (maxDepth != null && maxDepth > 0) ? maxDepth : 10;
 
+        // Cargar relaciones para todas las ubicaciones
+        Map<String, Location> nameToLocation = new HashMap<>();
+        List<Location> allLocations = locationRepository.findAll();
+        for (Location loc : allLocations) {
+            nameToLocation.put(loc.getName(), loc);
+            if (loc.getRoutes() == null || loc.getRoutes().isEmpty()) {
+                graphService.loadLocationWithRoutes(loc);
+            }
+        }
+        
+        // Asegurar que start y end tengan relaciones
+        start = nameToLocation.get(startName);
+        end = nameToLocation.get(endName);
+        if (start == null || end == null) {
+            RouteResponse response = new RouteResponse();
+            response.setMessage("Ubicación no encontrada");
+            response.setAlgorithm("Backtracking");
+            return response;
+        }
+        
+        if (start.getRoutes() == null || start.getRoutes().isEmpty()) {
+            start = graphService.loadLocationWithRoutes(start);
+        }
+
         List<List<String>> allPaths = new ArrayList<>();
         List<String> currentPath = new ArrayList<>();
-        Set<Long> visited = new HashSet<>();
+        Set<String> visited = new HashSet<>(); // Usar nombres en lugar de IDs
 
-        backtrack(start, end, currentPath, visited, allPaths, maxDepthValue);
+        backtrack(start, end, currentPath, visited, allPaths, maxDepthValue, nameToLocation);
 
         if (allPaths.isEmpty()) {
             RouteResponse response = new RouteResponse();
@@ -64,35 +91,52 @@ public class BacktrackingService {
     }
 
     private void backtrack(Location current, Location target, List<String> currentPath,
-                          Set<Long> visited, List<List<String>> allPaths, int maxDepth) {
+                          Set<String> visited, List<List<String>> allPaths, int maxDepth,
+                          Map<String, Location> nameToLocation) {
+        // Cargar relaciones si no están cargadas
+        if (current.getRoutes() == null || current.getRoutes().isEmpty()) {
+            current = graphService.loadLocationWithRoutes(current);
+        }
+        
         // Condición de parada: profundidad máxima alcanzada
         if (currentPath.size() >= maxDepth) {
             return;
         }
 
-        // Si llegamos al destino
-        if (current.getId().equals(target.getId()) && !currentPath.isEmpty()) {
+        // Si llegamos al destino - comparar por nombre
+        if (current.getName().equals(target.getName()) && !currentPath.isEmpty()) {
             List<String> path = new ArrayList<>(currentPath);
             path.add(current.getName());
             allPaths.add(path);
             return;
         }
 
-        // Marcar como visitado
-        visited.add(current.getId());
-        currentPath.add(current.getName());
+        // Marcar como visitado usando nombre
+        String currentName = current.getName();
+        visited.add(currentName);
+        currentPath.add(currentName);
 
         // Explorar vecinos
-        for (Route route : current.getRoutes()) {
-            Location neighbor = route.getDestination();
-            if (!visited.contains(neighbor.getId())) {
-                backtrack(neighbor, target, currentPath, visited, allPaths, maxDepth);
+        if (current.getRoutes() != null) {
+            for (Route route : current.getRoutes()) {
+                if (route == null || route.getDestination() == null) continue;
+                
+                Location neighbor = route.getDestination();
+                Location neighborOriginal = nameToLocation.get(neighbor.getName());
+                
+                if (neighborOriginal == null || visited.contains(neighbor.getName())) {
+                    continue;
+                }
+                
+                backtrack(neighborOriginal, target, currentPath, visited, allPaths, maxDepth, nameToLocation);
             }
         }
 
         // Backtrack: desmarcar y remover del camino
-        visited.remove(current.getId());
-        currentPath.remove(currentPath.size() - 1);
+        visited.remove(currentName);
+        if (!currentPath.isEmpty()) {
+            currentPath.remove(currentPath.size() - 1);
+        }
     }
 
     private double calculatePathDistance(List<String> path) {
@@ -103,10 +147,21 @@ public class BacktrackingService {
             if (loc1Opt.isPresent() && loc2Opt.isPresent()) {
                 Location loc1 = loc1Opt.get();
                 Location loc2 = loc2Opt.get();
-                for (Route route : loc1.getRoutes()) {
-                    if (route.getDestination().getId().equals(loc2.getId())) {
-                        total += route.getDistance();
-                        break;
+                
+                // Cargar relaciones si es necesario
+                if (loc1.getRoutes() == null || loc1.getRoutes().isEmpty()) {
+                    loc1 = graphService.loadLocationWithRoutes(loc1);
+                }
+                
+                if (loc1.getRoutes() != null) {
+                    for (Route route : loc1.getRoutes()) {
+                        if (route != null && route.getDestination() != null &&
+                            route.getDestination().getName().equals(loc2.getName())) {
+                            if (route.getDistance() != null) {
+                                total += route.getDistance();
+                            }
+                            break;
+                        }
                     }
                 }
             }

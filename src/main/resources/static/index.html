@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Navegación Urbana - Algoritmos de Grafos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .algorithm-section {
+            margin-bottom: 40px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+
+        .algorithm-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .algorithm-section h3 {
+            color: #764ba2;
+            margin: 15px 0 10px 0;
+            font-size: 1.2em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .result.error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+
+        .result pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .endpoint-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #1976d2;
+        }
+
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .two-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .info-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .data-status {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .data-status button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🗺️ Sistema de Navegación Urbana</h1>
+            <p>Algoritmos de Grafos - Trabajo Práctico</p>
+        </header>
+
+        <div class="content">
+            <!-- Estado de Datos -->
+            <div class="data-status">
+                <h3>📊 Estado de la Base de Datos</h3>
+                <p id="data-status-text">Verificando...</p>
+                <button onclick="checkDataStatus()">Verificar Estado</button>
+                <button onclick="loadSampleData()" style="background: #4caf50; margin-left: 10px;">Cargar Datos de Ejemplo</button>
+                <button onclick="clearData()" style="background: #f44336; margin-left: 10px;">Limpiar Datos</button>
+            </div>
+
+            <!-- Información -->
+            <div class="info-box">
+                <strong>ℹ️ Instrucciones:</strong> Asegúrate de cargar los datos de ejemplo antes de probar los algoritmos.
+                Usa ubicaciones sin tildes: "Cordoba" (no "Córdoba"), "Tucuman" (no "Tucumán").
+            </div>
+
+            <!-- 1. BFS -->
+            <div class="algorithm-section">
+                <h2>1. BFS (Breadth First Search)</h2>
+                <div class="endpoint-info">GET /api/algorithms/bfs?start={ubicacion}&maxDistance={km}</div>
+                <div class="form-group">
+                    <label>Ubicación Inicio:</label>
+                    <input type="text" id="bfs-start" value="Buenos Aires" placeholder="Buenos Aires">
+                </div>
+                <div class="form-group">
+                    <label>Distancia Máxima (km):</label>
+                    <input type="number" id="bfs-max" value="500" placeholder="500">
+                </div>
+                <button onclick="testBFS()">Ejecutar BFS</button>
+                <div class="loading" id="bfs-loading">⏳ Procesando...</div>
+                <div class="result" id="bfs-result"></div>
+            </div>
+
+            <!-- 2. DFS -->
+            <div class="algorithm-section">
+                <h2>2. DFS (Depth First Search)</h2>
+                <div class="endpoint-info">GET /api/algorithms/dfs?start={ubicacion}&end={ubicacion}</div>
+                <div class="two-columns">
+                    <div class="form-group">
+                        <label>Ubicación Origen:</label>
+                        <input type="text" id="dfs-start" value="Buenos Aires" placeholder="Buenos Aires">
+                    </div>
+                    <div class="form-group">
+                        <label>Ubicación Destino:</label>
+                        <input type="text" id="dfs-end" value="Cordoba" placeholder="Cordoba">
+                    </div>
+                </div>
+                <button onclick="testDFS()">Ejecutar DFS</button>
+                <div class="loading" id="dfs-loading">⏳ Procesando...</div>
+                <div class="result" id="dfs-result"></div>
+            </div>
+
+            <!-- 3. Dijkstra -->
+            <div class="algorithm-section">
+                <h2>3. Dijkstra - Ruta Más Corta</h2>
+                <div class="endpoint-info">GET /api/algorithms/dijkstra?start={ubicacion}&end={ubicacion}</div>
+                <div class="two-columns">
+                    <div class="form-group">
+                        <label>Ubicación Origen:</label>
+                        <input type="text" id="dijkstra-start" value="Buenos Aires" placeholder="Buenos Aires">
+                    </div>
+                    <div class="form-group">
+                        <label>Ubicación Destino:</label>
+                        <input type="text" id="dijkstra-end" value="Cordoba" placeholder="Cordoba">
+                    </div>
+                </div>
+                <button onclick="testDijkstra()">Ejecutar Dijkstra</button>
+                <div class="loading" id="dijkstra-loading">⏳ Procesando...</div>
+                <div class="result" id="dijkstra-result"></div>
+            </div>
+
+            <!-- 4. Prim -->
+            <div class="algorithm-section">
+                <h2>4. Prim - Árbol de Expansión Mínima</h2>
+                <div class="endpoint-info">GET /api/algorithms/prim</div>
+                <button onclick="testPrim()">Ejecutar Prim</button>
+                <div class="loading" id="prim-loading">⏳ Procesando...</div>
+                <div class="result" id="prim-result"></div>
+            </div>
+
+            <!-- 5. Kruskal -->
+            <div class="algorithm-section">
+                <h2>5. Kruskal - Árbol de Expansión Mínima</h2>
+                <div class="endpoint-info">GET /api/algorithms/kruskal</div>
+                <button onclick="testKruskal()">Ejecutar Kruskal</button>
+                <div class="loading" id="kruskal-loading">⏳ Procesando...</div>
+                <div class="result" id="kruskal-result"></div>
+            </div>
+
+            <!-- 6. Greedy TSP -->
+            <div class="algorithm-section">
+                <h2>6. Greedy TSP</h2>
+                <div class="endpoint-info">GET /api/algorithms/greedy/tsp?start={ubicacion}</div>
+                <div class="form-group">
+                    <label>Ubicación Inicio:</label>
+                    <input type="text" id="greedy-start" value="Buenos Aires" placeholder="Buenos Aires">
+                </div>
+                <button onclick="testGreedy()">Ejecutar Greedy TSP</button>
+                <div class="loading" id="greedy-loading">⏳ Procesando...</div>
+                <div class="result" id="greedy-result"></div>
+            </div>
+
+            <!-- 7. Quicksort -->
+            <div class="algorithm-section">
+                <h2>7. Quicksort (Divide y Vencerás)</h2>
+                <div class="endpoint-info">GET /api/algorithms/divide-conquer/quicksort?sortBy={name|latitude|longitude}</div>
+                <div class="form-group">
+                    <label>Ordenar por:</label>
+                    <select id="quicksort-by">
+                        <option value="name">Nombre</option>
+                        <option value="latitude">Latitud</option>
+                        <option value="longitude">Longitud</option>
+                    </select>
+                </div>
+                <button onclick="testQuicksort()">Ejecutar Quicksort</button>
+                <div class="loading" id="quicksort-loading">⏳ Procesando...</div>
+                <div class="result" id="quicksort-result"></div>
+            </div>
+
+            <!-- 8. Mergesort -->
+            <div class="algorithm-section">
+                <h2>8. Mergesort (Divide y Vencerás)</h2>
+                <div class="endpoint-info">GET /api/algorithms/divide-conquer/mergesort?sortBy={name|latitude|longitude}</div>
+                <div class="form-group">
+                    <label>Ordenar por:</label>
+                    <select id="mergesort-by">
+                        <option value="name">Nombre</option>
+                        <option value="latitude">Latitud</option>
+                        <option value="longitude">Longitud</option>
+                    </select>
+                </div>
+                <button onclick="testMergesort()">Ejecutar Mergesort</button>
+                <div class="loading" id="mergesort-loading">⏳ Procesando...</div>
+                <div class="result" id="mergesort-result"></div>
+            </div>
+
+            <!-- 9. Dynamic TSP -->
+            <div class="algorithm-section">
+                <h2>9. Programación Dinámica TSP</h2>
+                <div class="endpoint-info">GET /api/algorithms/dynamic/tsp?start={ubicacion}</div>
+                <div class="form-group">
+                    <label>Ubicación Inicio:</label>
+                    <input type="text" id="dynamic-start" value="Buenos Aires" placeholder="Buenos Aires">
+                </div>
+                <button onclick="testDynamic()">Ejecutar Dynamic TSP</button>
+                <div class="loading" id="dynamic-loading">⏳ Procesando...</div>
+                <div class="result" id="dynamic-result"></div>
+            </div>
+
+            <!-- 10. Backtracking -->
+            <div class="algorithm-section">
+                <h2>10. Backtracking</h2>
+                <div class="endpoint-info">GET /api/algorithms/backtracking/routes?start={ubicacion}&end={ubicacion}&maxDepth={n}</div>
+                <div class="two-columns">
+                    <div class="form-group">
+                        <label>Ubicación Origen:</label>
+                        <input type="text" id="backtrack-start" value="Buenos Aires" placeholder="Buenos Aires">
+                    </div>
+                    <div class="form-group">
+                        <label>Ubicación Destino:</label>
+                        <input type="text" id="backtrack-end" value="Cordoba" placeholder="Cordoba">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Profundidad Máxima:</label>
+                    <input type="number" id="backtrack-depth" value="5" placeholder="5">
+                </div>
+                <button onclick="testBacktracking()">Ejecutar Backtracking</button>
+                <div class="loading" id="backtrack-loading">⏳ Procesando...</div>
+                <div class="result" id="backtrack-result"></div>
+            </div>
+
+            <!-- 11. Branch & Bound -->
+            <div class="algorithm-section">
+                <h2>11. Branch & Bound</h2>
+                <div class="endpoint-info">POST /api/algorithms/branch-bound/optimize</div>
+                <div class="two-columns">
+                    <div class="form-group">
+                        <label>Ubicación Origen:</label>
+                        <input type="text" id="bb-start" value="Buenos Aires" placeholder="Buenos Aires">
+                    </div>
+                    <div class="form-group">
+                        <label>Ubicación Destino:</label>
+                        <input type="text" id="bb-end" value="Cordoba" placeholder="Cordoba">
+                    </div>
+                </div>
+                <div class="two-columns">
+                    <div class="form-group">
+                        <label>Distancia Máxima (km):</label>
+                        <input type="number" id="bb-distance" value="800" placeholder="800">
+                    </div>
+                    <div class="form-group">
+                        <label>Duración Máxima (min):</label>
+                        <input type="number" id="bb-duration" value="600" placeholder="600">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Costo Máximo:</label>
+                    <input type="number" id="bb-cost" value="100" placeholder="100">
+                </div>
+                <button onclick="testBranchBound()">Ejecutar Branch & Bound</button>
+                <div class="loading" id="bb-loading">⏳ Procesando...</div>
+                <div class="result" id="bb-result"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+
+        // Funciones para verificar estado de datos
+        async function checkDataStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/data/status`);
+                const data = await response.json();
+                document.getElementById('data-status-text').innerHTML = 
+                    `✅ <strong>${data.totalLocations}</strong> ubicaciones, <strong>${data.totalRelationships}</strong> relaciones`;
+            } catch (error) {
+                document.getElementById('data-status-text').innerHTML = 
+                    `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function loadSampleData() {
+            try {
+                const response = await fetch(`${API_BASE}/data/load-sample`, { method: 'POST' });
+                const data = await response.json();
+                alert(`✅ ${data.message}\n\nUbicaciones: ${data.totalLocations}\nRutas: ${data.totalRoutes}`);
+                checkDataStatus();
+            } catch (error) {
+                alert(`❌ Error: ${error.message}`);
+            }
+        }
+
+        async function clearData() {
+            if (!confirm('¿Estás seguro de limpiar todos los datos?')) return;
+            try {
+                const response = await fetch(`${API_BASE}/data/clear`, { method: 'DELETE' });
+                const data = await response.json();
+                alert(`✅ ${data.message}`);
+                checkDataStatus();
+            } catch (error) {
+                alert(`❌ Error: ${error.message}`);
+            }
+        }
+
+        // Funciones para ejecutar algoritmos
+        async function testBFS() {
+            const start = document.getElementById('bfs-start').value;
+            const maxDistance = document.getElementById('bfs-max').value;
+            const loading = document.getElementById('bfs-loading');
+            const result = document.getElementById('bfs-result');
+            
+            loading.classList.add('active');
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/algorithms/bfs?start=${encodeURIComponent(start)}&maxDistance=${maxDistance}`);
+                const data = await response.json();
+                showResult(result, data);
+            } catch (error) {
+                showError(result, error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        async function testDFS() {
+            const start = document.getElementById('dfs-start').value;
+            const end = document.getElementById('dfs-end').value;
+            const loading = document.getElementById('dfs-loading');
+            const result = document.getElementById('dfs-result');
+            
+            loading.classList.add('active');
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/algorithms/dfs?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+                const data = await response.json();
+                showResult(result, data);
+            } catch (error) {
+                showError(result, error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        async function testDijkstra() {
+            const start = document.getElementById('dijkstra-start').value;
+            const end = document.getElementById('dijkstra-end').value;
+            const loading = document.getElementById('dijkstra-loading');
+            const result = document.getElementById('dijkstra-result');
+            
+            loading.classList.add('active');
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/algorithms/dijkstra?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+                const data = await response.json();
+                showResult(result, data);
+            } catch (error) {
+                showError(result, error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        async function testPrim() {
+            const loading = document.getElementById('prim-loading');
+            const result = document.getElementById('prim-result');
+            
+            loading.classList.add('active');
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/algorithms/prim`);
+                const data = await response.json();
+                showResult(result, data);
+            } catch (error) {
+                showError(result, error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        async function testKruskal() {
+            const loading = document.getElementById('kruskal-loading');
+            const result = document.getElementById('kruskal-result');
+            
+            loading.classList.add('active');
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/algorithms/kruskal`);
+                const data = await response.json();
+                showResult(result, data);
+            } catch (error) {
+                showError(result, error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        async function testGreedy() {
+            const start = document.getElementById('greedy-start').value;
+            const loading = document.getElementById('greedy-loading');
+            const result = document.getElementById('greedy-result');
+            
+            loading.classList.add('active');
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/algorithms/greedy/tsp?start=${encodeURIComponent(start)}`);
+                const data = await response.json();
+                showResult(result, data);
+            } catch (error) {
+                showError(result, error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        async function testQuicksort() {
+            const sortBy = document.getElementById('quicksort-by').value;
+            const loading = document.getElementById('quicksort-loading');
+            const result = document.getElementById('quicksort-result');
+            
+            loading.classList.add('active');
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/algorithms/divide-conquer/quicksort?sortBy=${sortBy}`);
+                const data = await response.json();
+                showResult(result, data, true);
+            } catch (error) {
+                showError(result, error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        async function testMergesort() {
+            const sortBy = document.getElementById('mergesort-by').value;
+            const loading = document.getElementById('mergesort-loading');
+            const result = document.getElementById('mergesort-result');
+            
+            loading.classList.add('active');
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/algorithms/divide-conquer/mergesort?sortBy=${sortBy}`);
+                const data = await response.json();
+                showResult(result, data, true);
+            } catch (error) {
+                showError(result, error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        async function testDynamic() {
+            const start = document.getElementById('dynamic-start').value;
+            const loading = document.getElementById('dynamic-loading');
+            const result = document.getElementById('dynamic-result');
+            
+            loading.classList.add('active');
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/algorithms/dynamic/tsp?start=${encodeURIComponent(start)}`);
+                const data = await response.json();
+                showResult(result, data);
+            } catch (error) {
+                showError(result, error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        async function testBacktracking() {
+            const start = document.getElementById('backtrack-start').value;
+            const end = document.getElementById('backtrack-end').value;
+            const maxDepth = document.getElementById('backtrack-depth').value;
+            const loading = document.getElementById('backtrack-loading');
+            const result = document.getElementById('backtrack-result');
+            
+            loading.classList.add('active');
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/algorithms/backtracking/routes?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&maxDepth=${maxDepth}`);
+                const data = await response.json();
+                showResult(result, data);
+            } catch (error) {
+                showError(result, error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        async function testBranchBound() {
+            const start = document.getElementById('bb-start').value;
+            const end = document.getElementById('bb-end').value;
+            const maxDistance = document.getElementById('bb-distance').value;
+            const maxDuration = document.getElementById('bb-duration').value;
+            const maxCost = document.getElementById('bb-cost').value;
+            const loading = document.getElementById('bb-loading');
+            const result = document.getElementById('bb-result');
+            
+            loading.classList.add('active');
+            result.style.display = 'none';
+            
+            try {
+                const body = {
+                    start: start,
+                    end: end,
+                    maxDistance: maxDistance ? parseFloat(maxDistance) : null,
+                    maxDuration: maxDuration ? parseInt(maxDuration) : null,
+                    maxCost: maxCost ? parseFloat(maxCost) : null
+                };
+                
+                const response = await fetch(`${API_BASE}/algorithms/branch-bound/optimize`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+                const data = await response.json();
+                showResult(result, data);
+            } catch (error) {
+                showError(result, error);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        // Funciones auxiliares
+        function showResult(element, data, isArray = false) {
+            element.style.display = 'block';
+            element.classList.remove('error');
+            
+            let html = '<h3>✅ Resultado:</h3>';
+            
+            if (isArray && Array.isArray(data)) {
+                html += `<p><strong>Ubicaciones ordenadas (${data.length}):</strong></p>`;
+                html += '<pre>' + JSON.stringify(data.map(l => ({
+                    name: l.name,
+                    latitude: l.latitude,
+                    longitude: l.longitude
+                })), null, 2) + '</pre>';
+            } else {
+                if (data.message) {
+                    html += `<p><strong>${data.message}</strong></p>`;
+                }
+                if (data.path) {
+                    html += `<p><strong>Ruta:</strong> ${data.path.join(' → ')}</p>`;
+                }
+                if (data.reachableLocations) {
+                    html += `<p><strong>Ubicaciones encontradas (${data.reachableLocations.length}):</strong> ${data.reachableLocations.join(', ')}</p>`;
+                }
+                if (data.totalDistance !== undefined) {
+                    html += `<p><strong>Distancia total:</strong> ${data.totalDistance} km</p>`;
+                }
+                if (data.totalDuration !== undefined) {
+                    html += `<p><strong>Duración total:</strong> ${data.totalDuration} minutos (${(data.totalDuration/60).toFixed(1)} horas)</p>`;
+                }
+                if (data.totalCost !== undefined) {
+                    html += `<p><strong>Costo total:</strong> $${data.totalCost}</p>`;
+                }
+                html += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            }
+            
+            element.innerHTML = html;
+        }
+
+        function showError(element, error) {
+            element.style.display = 'block';
+            element.classList.add('error');
+            element.innerHTML = `<h3>❌ Error:</h3><p>${error.message}</p>`;
+        }
+
+        // Verificar estado al cargar
+        window.onload = function() {
+            checkDataStatus();
+        };
+    </script>
+</body>
+</html>
+
