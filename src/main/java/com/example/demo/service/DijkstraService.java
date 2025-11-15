@@ -42,51 +42,66 @@ public class DijkstraService {
         Location start = startOpt.get();
         Location end = endOpt.get();
 
-        // Dijkstra's algorithm
-        Map<Location, Double> distances = new HashMap<>();
-        Map<Location, Location> previous = new HashMap<>();
-        Set<Location> visited = new HashSet<>();
-        PriorityQueue<Location> queue = new PriorityQueue<>(
-            Comparator.comparingDouble(distances::get)
+        // Cargar relaciones para todas las ubicaciones de una vez
+        Map<String, Location> nameToLocation = new HashMap<>();
+        for (Location loc : allLocations) {
+            nameToLocation.put(loc.getName(), loc);
+            if (loc.getRoutes() == null || loc.getRoutes().isEmpty()) {
+                graphService.loadLocationWithRoutes(loc);
+            }
+        }
+
+        // Dijkstra's algorithm - usar nombres como claves para evitar problemas con objetos
+        Map<String, Double> distances = new HashMap<>();
+        Map<String, String> previous = new HashMap<>();
+        Set<String> visited = new HashSet<>();
+        PriorityQueue<String> queue = new PriorityQueue<>(
+            Comparator.comparingDouble(name -> distances.getOrDefault(name, Double.MAX_VALUE))
         );
 
-        // Initialize distances - usar todas las ubicaciones cargadas
+        // Initialize distances
         for (Location loc : allLocations) {
-            distances.put(loc, Double.MAX_VALUE);
+            distances.put(loc.getName(), Double.MAX_VALUE);
         }
-        distances.put(start, 0.0);
-        queue.offer(start);
+        distances.put(start.getName(), 0.0);
+        queue.offer(start.getName());
 
         while (!queue.isEmpty()) {
-            Location current = queue.poll();
-            if (visited.contains(current)) continue;
-            visited.add(current);
+            String currentName = queue.poll();
+            if (visited.contains(currentName)) continue;
+            visited.add(currentName);
 
-            if (current.getId().equals(end.getId())) {
+            if (currentName.equals(end.getName())) {
                 break; // Found destination
             }
 
-            // Cargar relaciones si no están cargadas
-            if (current.getRoutes() == null || current.getRoutes().isEmpty()) {
-                current = graphService.loadLocationWithRoutes(current);
-            }
+            Location current = nameToLocation.get(currentName);
+            if (current == null || current.getRoutes() == null) continue;
             
             // Explore neighbors
             for (Route route : current.getRoutes()) {
                 Location neighbor = route.getDestination();
-                if (visited.contains(neighbor)) continue;
+                String neighborName = neighbor.getName();
+                
+                if (visited.contains(neighborName)) continue;
+                
+                // Obtener la ubicación original del mapa
+                Location neighborOriginal = nameToLocation.get(neighborName);
+                if (neighborOriginal == null) continue;
 
-                double newDistance = distances.get(current) + route.getDistance();
-                if (newDistance < distances.get(neighbor)) {
-                    distances.put(neighbor, newDistance);
-                    previous.put(neighbor, current);
-                    queue.offer(neighbor);
+                double newDistance = distances.get(currentName) + route.getDistance();
+                double currentDistance = distances.getOrDefault(neighborName, Double.MAX_VALUE);
+                
+                if (newDistance < currentDistance) {
+                    distances.put(neighborName, newDistance);
+                    previous.put(neighborName, currentName);
+                    queue.offer(neighborName);
                 }
             }
         }
 
-        // Reconstruct path
-        if (distances.get(end) == Double.MAX_VALUE) {
+        // Reconstruct path usando nombres
+        if (distances.getOrDefault(end.getName(), Double.MAX_VALUE) == Double.MAX_VALUE) {
             RouteResponse response = new RouteResponse();
             response.setMessage("No se encontró ruta entre " + startName + " y " + endName);
             response.setAlgorithm("Dijkstra");
@@ -94,26 +109,31 @@ public class DijkstraService {
         }
 
         List<String> path = new ArrayList<>();
-        Location current = end;
+        String currentName = end.getName();
         double totalDistance = 0.0;
         int totalDuration = 0;
         double totalCost = 0.0;
 
-        while (current != null) {
-            path.add(0, current.getName());
-            Location prev = previous.get(current);
-            if (prev != null) {
-                // Find route between prev and current
-                for (Route route : prev.getRoutes()) {
-                    if (route.getDestination().getId().equals(current.getId())) {
-                        totalDistance += route.getDistance();
-                        totalDuration += route.getDuration();
-                        totalCost += route.getCost();
-                        break;
+        while (currentName != null) {
+            path.add(0, currentName);
+            String prevName = previous.get(currentName);
+            if (prevName != null) {
+                Location prev = nameToLocation.get(prevName);
+                Location current = nameToLocation.get(currentName);
+                
+                if (prev != null && prev.getRoutes() != null && current != null) {
+                    // Find route between prev and current usando nombres
+                    for (Route route : prev.getRoutes()) {
+                        if (route.getDestination().getName().equals(currentName)) {
+                            totalDistance += route.getDistance();
+                            totalDuration += route.getDuration();
+                            totalCost += route.getCost();
+                            break;
+                        }
                     }
                 }
             }
-            current = prev;
+            currentName = prevName;
         }
 
         RouteResponse response = new RouteResponse(path, totalDistance, totalDuration, totalCost, "Dijkstra");

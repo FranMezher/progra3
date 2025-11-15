@@ -19,9 +19,15 @@ public class GraphService {
 
     /**
      * Carga una ubicación con todas sus relaciones desde la base de datos
+     * Modifica el objeto existente en lugar de crear uno nuevo
      */
     public Location loadLocationWithRoutes(Location location) {
         if (location == null) return null;
+        
+        // Si ya tiene relaciones, no cargar de nuevo
+        if (location.getRoutes() != null && !location.getRoutes().isEmpty()) {
+            return location;
+        }
         
         // Obtener todas las rutas desde esta ubicación usando query directa
         List<Object[]> routesData = locationRepository.findRoutesFromLocation(location.getName());
@@ -38,22 +44,54 @@ public class GraphService {
         
         // Crear las rutas (sin cargar relaciones de destinos para evitar recursión)
         for (Object[] routeData : routesData) {
-            Location dest = (Location) routeData[0];
-            Double distance = (Double) routeData[1];
-            Integer duration = (Integer) routeData[2];
-            Double cost = (Double) routeData[3];
+            if (routeData.length < 4) continue;
             
-            // Buscar el destino en el mapa
-            Location destination = nameToLocation.get(dest.getName());
-            if (destination != null) {
-                // Crear destino sin relaciones para evitar recursión infinita
-                Location destWithoutRoutes = new Location(destination.getName(), 
-                    destination.getLatitude(), destination.getLongitude(), destination.getType());
-                destWithoutRoutes.setId(destination.getId());
-                destWithoutRoutes.setRoutes(new HashSet<>()); // Sin relaciones para evitar recursión
+            try {
+                Location dest = null;
+                Object destObj = routeData[0];
                 
-                Route route = new Route(destWithoutRoutes, distance, duration, cost, "highway");
-                routes.add(route);
+                if (destObj instanceof Location) {
+                    dest = (Location) destObj;
+                } else if (destObj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> destMap = (Map<String, Object>) destObj;
+                    String destName = (String) destMap.get("name");
+                    dest = nameToLocation.get(destName);
+                }
+                
+                if (dest == null) continue;
+                
+                Object distObj = routeData[1];
+                Object durObj = routeData[2];
+                Object costObj = routeData[3];
+                
+                if (!(distObj instanceof Double) || !(durObj instanceof Integer) || !(costObj instanceof Double)) {
+                    continue;
+                }
+                
+                Double distance = (Double) distObj;
+                Integer duration = (Integer) durObj;
+                Double cost = (Double) costObj;
+                
+                // Buscar el destino en el mapa
+                Location destination = nameToLocation.get(dest.getName());
+                if (destination != null) {
+                    // Crear destino sin relaciones para evitar recursión infinita
+                    // Pero mantener el ID original si existe
+                    Location destWithoutRoutes = new Location(destination.getName(), 
+                        destination.getLatitude(), destination.getLongitude(), destination.getType());
+                    // Mantener el ID original para comparaciones
+                    if (destination.getId() != null) {
+                        destWithoutRoutes.setId(destination.getId());
+                    }
+                    destWithoutRoutes.setRoutes(new HashSet<>()); // Sin relaciones para evitar recursión
+                    
+                    Route route = new Route(destWithoutRoutes, distance, duration, cost, "highway");
+                    routes.add(route);
+                }
+            } catch (Exception e) {
+                // Continuar con la siguiente ruta si hay error
+                System.err.println("Error procesando ruta: " + e.getMessage());
             }
         }
         

@@ -30,13 +30,8 @@ public class KruskalService {
 
         // Recopilar todas las aristas
         List<Edge> edges = new ArrayList<>();
-        Map<Long, Long> locationIdToIndex = new HashMap<>();
-        long index = 0;
-        for (Location loc : allLocations) {
-            locationIdToIndex.put(loc.getId(), index++);
-        }
         
-        // Crear mapa de nombres a ubicaciones para buscar destinos
+        // Crear mapa de nombres a ubicaciones
         Map<String, Location> nameToLocation = new HashMap<>();
         for (Location loc : allLocations) {
             nameToLocation.put(loc.getName(), loc);
@@ -44,27 +39,66 @@ public class KruskalService {
         
         // Recopilar aristas usando queries directas para obtener relaciones
         for (Location loc : allLocations) {
-            List<Object[]> routes = locationRepository.findRoutesFromLocation(loc.getName());
-            for (Object[] routeData : routes) {
-                Location dest = (Location) routeData[0];
-                Double distance = (Double) routeData[1];
-                Integer duration = (Integer) routeData[2];
-                Double cost = (Double) routeData[3];
-                
-                // Evitar duplicados (grafo no dirigido)
-                Long locIndex = locationIdToIndex.get(loc.getId());
-                Long destIndex = locationIdToIndex.get(dest.getId());
-                if (locIndex != null && destIndex != null && locIndex < destIndex) {
-                    Route route = new Route(dest, distance, duration, cost, "highway");
-                    edges.add(new Edge(loc, dest, distance, route));
+            try {
+                List<Object[]> routes = locationRepository.findRoutesFromLocation(loc.getName());
+                for (Object[] routeData : routes) {
+                    if (routeData.length < 4) continue;
+                    
+                    // Validar tipos antes de hacer cast
+                    Object destObj = routeData[0];
+                    Location dest = null;
+                    
+                    if (destObj instanceof Location) {
+                        dest = (Location) destObj;
+                    } else if (destObj instanceof Map) {
+                        // Si viene como mapa, extraer el nombre
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> destMap = (Map<String, Object>) destObj;
+                        String destName = (String) destMap.get("name");
+                        dest = nameToLocation.get(destName);
+                    }
+                    
+                    if (dest == null) continue;
+                    
+                    // Validar que los valores no sean null
+                    Object distObj = routeData[1];
+                    Object durObj = routeData[2];
+                    Object costObj = routeData[3];
+                    
+                    if (!(distObj instanceof Double) || !(durObj instanceof Integer) || !(costObj instanceof Double)) {
+                        continue;
+                    }
+                    
+                    Double distance = (Double) distObj;
+                    Integer duration = (Integer) durObj;
+                    Double cost = (Double) costObj;
+                    
+                    // Usar nombres para comparar y evitar duplicados (grafo no dirigido)
+                    String locName = loc.getName();
+                    String destName = dest.getName();
+                    
+                    // Comparar alfabéticamente para evitar duplicados (A->B y B->A son la misma arista)
+                    if (locName.compareTo(destName) < 0) {
+                        Route route = new Route(dest, distance, duration, cost, "highway");
+                        edges.add(new Edge(loc, dest, distance, route));
+                    }
                 }
+            } catch (Exception e) {
+                // Continuar con la siguiente ubicación si hay error
+                System.err.println("Error procesando rutas de " + loc.getName() + ": " + e.getMessage());
             }
         }
 
         // Ordenar aristas por peso
         edges.sort(Comparator.comparingDouble(Edge::getWeight));
 
-        // Union-Find
+        // Union-Find - usar índices basados en posición
+        Map<String, Integer> nameToIndex = new HashMap<>();
+        int idx = 0;
+        for (Location loc : allLocations) {
+            nameToIndex.put(loc.getName(), idx++);
+        }
+        
         UnionFind uf = new UnionFind(allLocations.size());
         List<String> mstPath = new ArrayList<>();
         double totalDistance = 0.0;
@@ -73,15 +107,19 @@ public class KruskalService {
 
         // Algoritmo de Kruskal
         for (Edge edge : edges) {
-            Long uId = locationIdToIndex.get(edge.from.getId());
-            Long vId = locationIdToIndex.get(edge.to.getId());
+            Integer uIndex = nameToIndex.get(edge.from.getName());
+            Integer vIndex = nameToIndex.get(edge.to.getName());
 
-            if (uId != null && vId != null && uf.find(uId) != uf.find(vId)) {
-                uf.union(uId, vId);
+            if (uIndex != null && vIndex != null && uf.find(uIndex) != uf.find(vIndex)) {
+                uf.union(uIndex, vIndex);
                 mstPath.add(edge.from.getName() + " -> " + edge.to.getName());
                 totalDistance += edge.weight;
-                totalDuration += edge.route.getDuration();
-                totalCost += edge.route.getCost();
+                if (edge.route.getDuration() != null) {
+                    totalDuration += edge.route.getDuration();
+                }
+                if (edge.route.getCost() != null) {
+                    totalCost += edge.route.getCost();
+                }
             }
         }
 
@@ -114,11 +152,11 @@ public class KruskalService {
     }
 
     private static class UnionFind {
-        private long[] parent;
+        private int[] parent;
         private int[] rank;
 
         UnionFind(int n) {
-            parent = new long[n];
+            parent = new int[n];
             rank = new int[n];
             for (int i = 0; i < n; i++) {
                 parent[i] = i;
@@ -126,24 +164,24 @@ public class KruskalService {
             }
         }
 
-        long find(long x) {
-            if (parent[(int) x] != x) {
-                parent[(int) x] = find(parent[(int) x]);
+        int find(int x) {
+            if (parent[x] != x) {
+                parent[x] = find(parent[x]);
             }
-            return parent[(int) x];
+            return parent[x];
         }
 
-        void union(long x, long y) {
-            long rootX = find(x);
-            long rootY = find(y);
+        void union(int x, int y) {
+            int rootX = find(x);
+            int rootY = find(y);
             if (rootX != rootY) {
-                if (rank[(int) rootX] < rank[(int) rootY]) {
-                    parent[(int) rootX] = rootY;
-                } else if (rank[(int) rootX] > rank[(int) rootY]) {
-                    parent[(int) rootY] = rootX;
+                if (rank[rootX] < rank[rootY]) {
+                    parent[rootX] = rootY;
+                } else if (rank[rootX] > rank[rootY]) {
+                    parent[rootY] = rootX;
                 } else {
-                    parent[(int) rootY] = rootX;
-                    rank[(int) rootX]++;
+                    parent[rootY] = rootX;
+                    rank[rootX]++;
                 }
             }
         }

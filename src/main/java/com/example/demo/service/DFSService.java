@@ -78,7 +78,8 @@ public class DFSService {
             current = graphService.loadLocationWithRoutes(current);
         }
         
-        if (current.getId().equals(target.getId())) {
+        // Comparar por nombre en lugar de ID (más confiable)
+        if (current.getName().equals(target.getName())) {
             // Found a path
             List<String> path = new ArrayList<>(currentPath);
             path.add(current.getName());

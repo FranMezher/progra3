@@ -40,11 +40,25 @@ public class GreedyService {
             return response;
         }
 
-        // Asegurar que start esté en la lista con sus relaciones
+        // Asegurar que start esté en la lista con sus relaciones - usar nombre en lugar de ID
         start = allLocations.stream()
-            .filter(l -> l.getId().equals(startOpt.get().getId()))
+            .filter(l -> l.getName().equals(startName))
             .findFirst()
             .orElse(start);
+        
+        // Cargar relaciones para todas las ubicaciones
+        Map<String, Location> nameToLocation = new HashMap<>();
+        for (Location loc : allLocations) {
+            nameToLocation.put(loc.getName(), loc);
+            if (loc.getRoutes() == null || loc.getRoutes().isEmpty()) {
+                graphService.loadLocationWithRoutes(loc);
+            }
+        }
+        
+        // Asegurar que start tenga sus relaciones cargadas
+        if (start.getRoutes() == null || start.getRoutes().isEmpty()) {
+            start = graphService.loadLocationWithRoutes(start);
+        }
 
         Set<Location> visited = new HashSet<>();
         List<String> path = new ArrayList<>();
@@ -58,9 +72,16 @@ public class GreedyService {
 
         // Algoritmo Greedy: siempre elegir la ubicación más cercana no visitada
         while (visited.size() < allLocations.size()) {
-            // Cargar relaciones si no están cargadas
+            // Asegurar que current tenga relaciones cargadas
             if (current.getRoutes() == null || current.getRoutes().isEmpty()) {
-                current = graphService.loadLocationWithRoutes(current);
+                current = nameToLocation.get(current.getName());
+                if (current != null && (current.getRoutes() == null || current.getRoutes().isEmpty())) {
+                    current = graphService.loadLocationWithRoutes(current);
+                }
+            }
+            
+            if (current == null || current.getRoutes() == null || current.getRoutes().isEmpty()) {
+                break; // No hay más conexiones disponibles
             }
             
             Location nearest = null;
@@ -68,10 +89,18 @@ public class GreedyService {
             double minDistance = Double.MAX_VALUE;
 
             for (Route route : current.getRoutes()) {
+                if (route == null || route.getDestination() == null || route.getDistance() == null) {
+                    continue;
+                }
                 Location neighbor = route.getDestination();
-                if (!visited.contains(neighbor) && route.getDistance() < minDistance) {
+                // Usar el objeto original del mapa para comparar
+                Location neighborOriginal = nameToLocation.get(neighbor.getName());
+                if (neighborOriginal == null || visited.contains(neighborOriginal)) {
+                    continue;
+                }
+                if (route.getDistance() < minDistance) {
                     minDistance = route.getDistance();
-                    nearest = neighbor;
+                    nearest = neighborOriginal;
                     nearestRoute = route;
                 }
             }
@@ -96,8 +125,12 @@ public class GreedyService {
                 visited.add(nearest);
                 totalDistance += minDistance;
                 if (nearestRoute != null) {
-                    totalDuration += nearestRoute.getDuration();
-                    totalCost += nearestRoute.getCost();
+                    if (nearestRoute.getDuration() != null) {
+                        totalDuration += nearestRoute.getDuration();
+                    }
+                    if (nearestRoute.getCost() != null) {
+                        totalCost += nearestRoute.getCost();
+                    }
                 }
                 current = nearest;
             } else {
@@ -105,14 +138,23 @@ public class GreedyService {
             }
         }
 
-        // Volver al inicio si es posible
-        for (Route route : current.getRoutes()) {
-            if (route.getDestination().getId().equals(start.getId())) {
-                path.add(start.getName());
-                totalDistance += route.getDistance();
-                totalDuration += route.getDuration();
-                totalCost += route.getCost();
-                break;
+        // Volver al inicio si es posible - comparar por nombre
+        if (current != null && current.getRoutes() != null) {
+            for (Route route : current.getRoutes()) {
+                if (route != null && route.getDestination() != null && 
+                    route.getDestination().getName().equals(startName)) {
+                    path.add(startName);
+                    if (route.getDistance() != null) {
+                        totalDistance += route.getDistance();
+                    }
+                    if (route.getDuration() != null) {
+                        totalDuration += route.getDuration();
+                    }
+                    if (route.getCost() != null) {
+                        totalCost += route.getCost();
+                    }
+                    break;
+                }
             }
         }
 
