@@ -18,6 +18,9 @@ public class KruskalService {
 
     @Autowired
     private LocationRepository locationRepository;
+    
+    @Autowired
+    private GraphService graphService;
 
     public RouteResponse findMinimumSpanningTree() {
         List<Location> allLocations = locationRepository.findAll();
@@ -37,55 +40,35 @@ public class KruskalService {
             nameToLocation.put(loc.getName(), loc);
         }
         
-        // Recopilar aristas usando queries directas para obtener relaciones
+        // Cargar relaciones para todas las ubicaciones (similar a Prim)
         for (Location loc : allLocations) {
-            try {
-                List<Object[]> routes = locationRepository.findRoutesFromLocation(loc.getName());
-                for (Object[] routeData : routes) {
-                    if (routeData.length < 4) continue;
-                    
-                    // Validar tipos antes de hacer cast
-                    Object destObj = routeData[0];
-                    Location dest = null;
-                    
-                    if (destObj instanceof Location) {
-                        dest = (Location) destObj;
-                    } else if (destObj instanceof Map) {
-                        // Si viene como mapa, extraer el nombre
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> destMap = (Map<String, Object>) destObj;
-                        String destName = (String) destMap.get("name");
-                        dest = nameToLocation.get(destName);
-                    }
-                    
-                    if (dest == null) continue;
-                    
-                    // Validar que los valores no sean null
-                    Object distObj = routeData[1];
-                    Object durObj = routeData[2];
-                    Object costObj = routeData[3];
-                    
-                    if (!(distObj instanceof Double) || !(durObj instanceof Integer) || !(costObj instanceof Double)) {
-                        continue;
-                    }
-                    
-                    Double distance = (Double) distObj;
-                    Integer duration = (Integer) durObj;
-                    Double cost = (Double) costObj;
-                    
-                    // Usar nombres para comparar y evitar duplicados (grafo no dirigido)
-                    String locName = loc.getName();
-                    String destName = dest.getName();
-                    
-                    // Comparar alfabéticamente para evitar duplicados (A->B y B->A son la misma arista)
-                    if (locName.compareTo(destName) < 0) {
-                        Route route = new Route(dest, distance, duration, cost, "highway");
-                        edges.add(new Edge(loc, dest, distance, route));
-                    }
+            if (loc.getRoutes() == null || loc.getRoutes().isEmpty()) {
+                graphService.loadLocationWithRoutes(loc);
+            }
+        }
+        
+        // Recopilar aristas directamente de las relaciones cargadas (más confiable, como Prim)
+        for (Location loc : allLocations) {
+            if (loc.getRoutes() == null || loc.getRoutes().isEmpty()) continue;
+            
+            for (Route route : loc.getRoutes()) {
+                if (route == null || route.getDestination() == null || route.getDistance() == null) {
+                    continue;
                 }
-            } catch (Exception e) {
-                // Continuar con la siguiente ubicación si hay error
-                System.err.println("Error procesando rutas de " + loc.getName() + ": " + e.getMessage());
+                
+                Location dest = route.getDestination();
+                Location destOriginal = nameToLocation.get(dest.getName());
+                
+                if (destOriginal == null) continue;
+                
+                // Usar nombres para comparar y evitar duplicados (grafo no dirigido)
+                String locName = loc.getName();
+                String destName = destOriginal.getName();
+                
+                // Comparar alfabéticamente para evitar duplicados (A->B y B->A son la misma arista)
+                if (locName.compareTo(destName) < 0) {
+                    edges.add(new Edge(loc, destOriginal, route.getDistance(), route));
+                }
             }
         }
 
@@ -129,7 +112,16 @@ public class KruskalService {
         response.setTotalDuration(totalDuration);
         response.setTotalCost(totalCost);
         response.setAlgorithm("Kruskal");
-        response.setMessage("Árbol de expansión mínima encontrado usando Kruskal.");
+        
+        if (edges.isEmpty()) {
+            response.setMessage("No se encontraron aristas. Verifique que las relaciones estén cargadas.");
+        } else if (mstPath.isEmpty()) {
+            response.setMessage("Se encontraron " + edges.size() + " aristas, pero no se pudo construir el MST. Posible grafo desconectado.");
+        } else {
+            response.setMessage("Árbol de expansión mínima encontrado usando Kruskal. " + 
+                              edges.size() + " aristas procesadas, " + mstPath.size() + " aristas en MST.");
+        }
+        
         return response;
     }
 
