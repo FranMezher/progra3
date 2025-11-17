@@ -19,8 +19,8 @@ public class DFSService {
     private GraphService graphService;
 
     /**
-     * DFS: Explora todas las rutas posibles desde un origen hasta un destino
-     * (exploración profunda)
+     * DFS: Explora rutas posibles desde un origen hasta un destino
+     * (exploración profunda) con límites para evitar OutOfMemoryError
      */
     public RouteResponse findAllRoutes(String startName, String endName) {
         // Cargar todas las ubicaciones con sus relaciones
@@ -46,11 +46,15 @@ public class DFSService {
         start = graphService.loadLocationWithRoutes(start);
         end = graphService.loadLocationWithRoutes(end);
 
+        // Límites para evitar OutOfMemoryError en grafos completos
+        int maxDepth = Math.min(10, allLocations.size()); // Profundidad máxima
+        int maxPaths = 100; // Máximo de rutas a encontrar
+        
         List<List<String>> allPaths = new ArrayList<>();
         Set<String> visited = new HashSet<>();
         List<String> currentPath = new ArrayList<>();
 
-        dfsRecursive(start, end, visited, currentPath, allPaths);
+        dfsRecursive(start, end, visited, currentPath, allPaths, maxDepth, maxPaths);
 
         if (allPaths.isEmpty()) {
             RouteResponse response = new RouteResponse();
@@ -67,12 +71,27 @@ public class DFSService {
         RouteResponse response = new RouteResponse();
         response.setPath(shortestPath);
         response.setAlgorithm("DFS");
-        response.setMessage("DFS encontró " + allPaths.size() + " rutas posibles. Mostrando la más corta.");
+        String message = "DFS encontró " + allPaths.size() + " ruta(s) posible(s). Mostrando la más corta.";
+        if (allPaths.size() >= maxPaths) {
+            message += " (Límite de " + maxPaths + " rutas alcanzado)";
+        }
+        response.setMessage(message);
         return response;
     }
 
     private void dfsRecursive(Location current, Location target, Set<String> visited,
-                             List<String> currentPath, List<List<String>> allPaths) {
+                             List<String> currentPath, List<List<String>> allPaths,
+                             int maxDepth, int maxPaths) {
+        // Límite de profundidad para evitar recursión infinita
+        if (currentPath.size() >= maxDepth) {
+            return;
+        }
+        
+        // Límite de rutas encontradas para evitar OutOfMemoryError
+        if (allPaths.size() >= maxPaths) {
+            return;
+        }
+        
         // Cargar relaciones si no están cargadas
         if (current.getRoutes() == null || current.getRoutes().isEmpty()) {
             current = graphService.loadLocationWithRoutes(current);
@@ -91,15 +110,22 @@ public class DFSService {
         currentPath.add(current.getName());
 
         for (Route route : current.getRoutes()) {
+            // Verificar límites antes de continuar
+            if (allPaths.size() >= maxPaths) {
+                break;
+            }
+            
             Location neighbor = route.getDestination();
-            if (!visited.contains(neighbor.getName())) {
-                dfsRecursive(neighbor, target, visited, currentPath, allPaths);
+            if (neighbor != null && !visited.contains(neighbor.getName())) {
+                dfsRecursive(neighbor, target, visited, currentPath, allPaths, maxDepth, maxPaths);
             }
         }
 
         // Backtrack
         visited.remove(current.getName());
-        currentPath.remove(currentPath.size() - 1);
+        if (!currentPath.isEmpty()) {
+            currentPath.remove(currentPath.size() - 1);
+        }
     }
 }
 
