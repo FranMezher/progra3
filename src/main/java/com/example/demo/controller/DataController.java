@@ -50,6 +50,9 @@ public class DataController {
             Location marDelPlata = new Location("Mar del Plata", -38.0055, -57.5426, "city");
             Location tucuman = new Location("Tucuman", -26.8083, -65.2176, "city");
             Location salta = new Location("Salta", -24.7859, -65.4117, "city");
+            Location catamarca = new Location("Catamarca", -28.4846,-65.8452, "city");
+            Location rionegro = new Location("Rio Negro", -39.7599,-69.9901, "city");
+            
 
             // Guardar todas las ubicaciones (deberían ser nuevas porque limpiamos)
             buenosAires = locationRepository.save(buenosAires);
@@ -60,6 +63,8 @@ public class DataController {
             marDelPlata = locationRepository.save(marDelPlata);
             tucuman = locationRepository.save(tucuman);
             salta = locationRepository.save(salta);
+            catamarca = locationRepository.save(catamarca);
+            rionegro = locationRepository.save(rionegro);
             
             // Esperar un momento para que se persistan
             Thread.sleep(500);
@@ -97,14 +102,27 @@ public class DataController {
             // Rosario <-> La Plata (350 km, 4 horas)
             createBidirectionalRoute(rosario, laPlata, 350.0, 240, 35.0, "highway");
 
+            createBidirectionalRoute(salta, rosario, 1173.0, 240, 14.0, "highway");
+
+            createBidirectionalRoute(salta, catamarca, 537.0, 240, 14.0, "highway");
+
+            createBidirectionalRoute(tucuman, catamarca, 231.0, 240, 14.0, "highway");
+
+            createBidirectionalRoute(rionegro, buenosAires, 1500.0, 240, 14.0, "highway");
+
+            createBidirectionalRoute(rionegro, cordoba, 922.0, 240, 14.0, "highway");
+            
+
             response.put("status", "success");
             response.put("message", "Datos de ejemplo cargados correctamente");
             response.put("locations", Arrays.asList(
                 "Buenos Aires", "Cordoba", "Rosario", "Mendoza", 
-                "La Plata", "Mar del Plata", "Tucuman", "Salta"
+                "La Plata", "Mar del Plata", "Tucuman", "Salta",
+                "Catamarca", "Rio Negro"
             ));
-            response.put("totalLocations", 8);
-            response.put("totalRoutes", 20); // 10 rutas bidireccionales = 20 conexiones
+            response.put("totalLocations", 10);
+            // Contar rutas: 10 originales + 5 nuevas = 15 rutas bidireccionales = 30 conexiones
+            response.put("totalRoutes", 30);
             response.put("description", "Red de ciudades argentinas con rutas bidireccionales para probar algoritmos de grafos");
 
             return ResponseEntity.ok(response);

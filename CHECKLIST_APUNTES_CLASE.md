@@ -28,6 +28,22 @@
 - ✅ La estructura recursiva coincide con los pseudocódigos de clase
 - ✅ El análisis de complejidad es correcto
 
+### ⏱️ Complejidad:
+
+#### **Quicksort**
+- **Tiempo (Mejor caso)**: O(n log n) - cuando el pivote divide el array en mitades iguales
+- **Tiempo (Caso promedio)**: O(n log n) - comportamiento esperado en la práctica
+- **Tiempo (Peor caso)**: O(n²) - cuando el pivote es siempre el elemento mínimo o máximo
+  - Recurrencia: T(n) = T(n-1) + Θ(n) → O(n²)
+- **Espacio**: O(log n) - profundidad de la pila de recursión (caso promedio)
+  - Peor caso: O(n) si el pivote siempre es un extremo
+
+#### **Mergesort**
+- **Tiempo (Todos los casos)**: O(n log n) - garantizado
+  - Recurrencia: T(n) = 2T(n/2) + Θ(n)
+  - Aplicando método de división: a=2, b=2, k=1 → a = b^k → Θ(n log n)
+- **Espacio**: O(n) - necesita espacio adicional para los arrays temporales durante el merge
+
 ---
 
 ## 2. ✅ ALGORITMOS GREEDY (Clase 3)
@@ -50,6 +66,19 @@
 - ✅ **CORRECTO**: El algoritmo greedy sigue la estrategia vista en clase
 - ✅ Toma decisiones localmente óptimas (ciudad más cercana)
 - ⚠️ **Nota**: En clase se vieron ejemplos de cambio de monedas y mochila, pero el TSP greedy es una aplicación válida del concepto
+
+### ⏱️ Complejidad:
+
+#### **Greedy TSP**
+- **Tiempo**: O(n²) - donde n es el número de ciudades
+  - Para cada ciudad (n iteraciones), busca la ciudad más cercana no visitada (n comparaciones)
+  - No requiere ordenamiento previo como otros algoritmos greedy
+- **Espacio**: O(n) - para almacenar:
+  - Lista de ciudades visitadas: O(n)
+  - Ruta resultante: O(n)
+  - Mapa de distancias: O(1) si se calcula sobre la marcha
+
+**Nota**: Este TSP greedy no garantiza solución óptima, pero es mucho más rápido que la solución óptima (O(n²) vs O(n!))
 
 ---
 
@@ -90,6 +119,42 @@
 - ✅ Estructura de datos correcta (PriorityQueue, Union-Find)
 - ✅ Lógica coincide con los pseudocódigos de clase
 
+### ⏱️ Complejidad:
+
+#### **Dijkstra**
+- **Tiempo**: O((V + E) log V) - donde V = vértices, E = aristas
+  - Con PriorityQueue (heap binario): cada operación extract-min es O(log V)
+  - Se procesan V vértices y E aristas
+  - Total: O(V log V + E log V) = O((V + E) log V)
+- **Espacio**: O(V) - para:
+  - PriorityQueue: O(V)
+  - Distancias y predecesores: O(V)
+  - Conjunto de visitados: O(V)
+
+#### **Prim**
+- **Tiempo**: O(E log V) - donde V = vértices, E = aristas
+  - Similar a Dijkstra, pero construye MST
+  - Con PriorityQueue: O(E log V)
+  - En grafos densos (E ≈ V²): O(V² log V)
+- **Espacio**: O(V) - para:
+  - PriorityQueue: O(V)
+  - Array de padres y distancias: O(V)
+  - Conjunto de visitados: O(V)
+
+#### **Kruskal**
+- **Tiempo**: O(E log E) - donde E = número de aristas
+  - Ordenamiento de aristas: O(E log E)
+  - Union-Find con path compression: O(E α(V)) ≈ O(E) donde α es la función de Ackermann inversa
+  - Total: O(E log E) dominado por el ordenamiento
+- **Espacio**: O(V) - para:
+  - Array de aristas ordenadas: O(E)
+  - Union-Find: O(V)
+  - MST resultante: O(V)
+
+**Comparación Prim vs Kruskal**:
+- **Prim**: Mejor para grafos densos (E ≈ V²) → O(V² log V)
+- **Kruskal**: Mejor para grafos dispersos (E << V²) → O(E log E)
+
 ---
 
 ## 4. ✅ PROGRAMACIÓN DINÁMICA (Clase 5)
@@ -114,6 +179,23 @@
 - ✅ **CORRECTO**: Usa memoización correctamente
 - ✅ Evita recalcular subproblemas
 - ✅ Estructura coincide con lo visto en clase sobre programación dinámica
+
+### ⏱️ Complejidad:
+
+#### **Programación Dinámica TSP**
+- **Tiempo**: O(n² × 2^n) - donde n = número de ciudades
+  - Estados posibles: 2^n subconjuntos de ciudades × n posiciones actuales
+  - Para cada estado, se calcula la distancia a n ciudades posibles
+  - Total: O(n² × 2^n)
+  - **Mejor que fuerza bruta**: O(n!) → O(n² × 2^n) es exponencial pero más eficiente
+- **Espacio**: O(n × 2^n) - para:
+  - Memoización: O(n × 2^n) estados
+  - Matriz de distancias: O(n²)
+  - Path memoization: O(n × 2^n)
+
+**Nota**: Aunque es exponencial, es mucho mejor que la solución de fuerza bruta O(n!). Para n=15 ciudades:
+- Fuerza bruta: 15! ≈ 1.3 × 10¹² operaciones
+- Programación dinámica: 15² × 2¹⁵ ≈ 7.4 × 10⁶ operaciones
 
 ---
 
@@ -153,6 +235,23 @@
 - ✅ Retroceso correcto: `visited.remove()` y `currentPath.remove()`
 - ✅ Exploración sistemática de todas las posibilidades
 
+### ⏱️ Complejidad:
+
+#### **Backtracking**
+- **Tiempo (Peor caso)**: O(b^d) - donde:
+  - b = factor de ramificación promedio (número de vecinos por nodo)
+  - d = profundidad máxima del árbol de búsqueda
+  - En el peor caso, explora todas las rutas posibles
+  - **Sin poda**: Puede ser exponencial O(V!) en grafos completos
+  - **Con maxDepth**: O(b^maxDepth) limitado por la profundidad máxima
+- **Tiempo (Mejor caso)**: O(V) - si encuentra la ruta en el primer intento
+- **Espacio**: O(d) - donde d = profundidad máxima
+  - Pila de recursión: O(d)
+  - Lista de visitados: O(V)
+  - Path actual: O(d)
+
+**Nota**: El backtracking puede ser muy costoso en grafos grandes sin restricciones de profundidad. La implementación limita la profundidad con `maxDepth` para evitar explosión exponencial.
+
 ---
 
 ## 6. ✅ BRANCH & BOUND (Clase 11)
@@ -180,6 +279,23 @@
 - ✅ Poda por optimalidad: `if (current.cost > bestSolutionCost) continue;`
 - ✅ Poda por restricciones: verifica límites de distancia, tiempo, costo
 - ✅ Busca la **mejor** solución (no todas las soluciones como backtracking)
+
+### ⏱️ Complejidad:
+
+#### **Branch & Bound**
+- **Tiempo (Peor caso)**: O(b^d) - similar a backtracking, pero con podas
+  - b = factor de ramificación
+  - d = profundidad máxima
+  - **Con podas efectivas**: Puede reducir significativamente el espacio de búsqueda
+  - **Sin podas**: O(V!) en el peor caso (igual que backtracking)
+- **Tiempo (Mejor caso)**: O(V log V) - si encuentra solución óptima rápidamente
+  - Similar a Dijkstra cuando las podas son muy efectivas
+- **Espacio**: O(b × d) - para:
+  - PriorityQueue: O(b × d) en el peor caso
+  - Mejor solución actual: O(d)
+  - Mapa de mejores costos: O(V)
+
+**Ventaja sobre Backtracking**: Las podas por optimalidad y restricciones pueden reducir drásticamente el número de estados explorados, haciendo el algoritmo más eficiente en la práctica.
 
 ---
 
@@ -216,25 +332,60 @@
 - ✅ Estructuras de datos correctas (Queue para BFS, recursión para DFS)
 - ✅ Lógica coincide con los pseudocódigos vistos en clase
 
+### ⏱️ Complejidad:
+
+#### **BFS (Breadth-First Search)**
+- **Tiempo**: O(V + E) - donde V = vértices, E = aristas
+  - Cada vértice se visita una vez: O(V)
+  - Cada arista se examina una vez: O(E)
+  - Total: O(V + E)
+- **Espacio**: O(V) - para:
+  - Cola (Queue): O(V) en el peor caso (todos los vértices en un nivel)
+  - Conjunto de visitados: O(V)
+  - Mapa de distancias: O(V)
+
+**Nota**: BFS garantiza encontrar el camino más corto en grafos no ponderados.
+
+#### **DFS (Depth-First Search)**
+- **Tiempo**: O(V + E) - donde V = vértices, E = aristas
+  - Cada vértice se visita una vez: O(V)
+  - Cada arista se examina una vez: O(E)
+  - Total: O(V + E)
+- **Espacio**: O(V) - para:
+  - Pila de recursión: O(V) en el peor caso (grafo lineal)
+  - Conjunto de visitados: O(V)
+  - Path actual: O(V) en el peor caso
+
+**Comparación BFS vs DFS**:
+- **BFS**: Encuentra camino más corto en grafos no ponderados, pero usa más memoria
+- **DFS**: Usa menos memoria (profundidad vs amplitud), pero no garantiza camino más corto
+
 ---
 
 ## 📊 RESUMEN GENERAL
 
 ### ✅ Algoritmos Implementados (11/11)
 
-| Algoritmo | Clase | Estado | Evaluación |
-|----------|-------|--------|------------|
-| **Quicksort** | Clase 2 | ✅ | Correcto |
-| **Mergesort** | Clase 2 | ✅ | Correcto |
-| **Greedy TSP** | Clase 3 | ✅ | Correcto |
-| **Dijkstra** | Clase 4 | ✅ | Correcto |
-| **Prim** | Clase 4 | ✅ | Correcto |
-| **Kruskal** | Clase 4 | ✅ | Correcto |
-| **Programación Dinámica TSP** | Clase 5 | ✅ | Correcto |
-| **Backtracking** | Clase 8, 12 | ✅ | Correcto |
-| **Branch & Bound** | Clase 11 | ✅ | Correcto |
-| **BFS** | Clase 9 | ✅ | Correcto |
-| **DFS** | Clase 9 | ✅ | Correcto |
+| Algoritmo | Clase | Estado | Complejidad Temporal | Complejidad Espacial |
+|----------|-------|--------|---------------------|---------------------|
+| **Quicksort** | Clase 2 | ✅ | O(n log n) promedio<br>O(n²) peor caso | O(log n) |
+| **Mergesort** | Clase 2 | ✅ | O(n log n) garantizado | O(n) |
+| **Greedy TSP** | Clase 3 | ✅ | O(n²) | O(n) |
+| **Dijkstra** | Clase 4 | ✅ | O((V + E) log V) | O(V) |
+| **Prim** | Clase 4 | ✅ | O(E log V) | O(V) |
+| **Kruskal** | Clase 4 | ✅ | O(E log E) | O(V) |
+| **Programación Dinámica TSP** | Clase 5 | ✅ | O(n² × 2^n) | O(n × 2^n) |
+| **Backtracking** | Clase 8, 12 | ✅ | O(b^d) peor caso<br>O(V) mejor caso | O(d) |
+| **Branch & Bound** | Clase 11 | ✅ | O(b^d) peor caso<br>O(V log V) mejor caso | O(b × d) |
+| **BFS** | Clase 9 | ✅ | O(V + E) | O(V) |
+| **DFS** | Clase 9 | ✅ | O(V + E) | O(V) |
+
+**Leyenda**:
+- **n** = número de elementos (ciudades, ubicaciones)
+- **V** = número de vértices (nodos)
+- **E** = número de aristas (rutas)
+- **b** = factor de ramificación promedio
+- **d** = profundidad máxima del árbol de búsqueda
 
 ---
 
@@ -259,11 +410,30 @@
 3. **Buen uso de estructuras de datos**: PriorityQueue, Queue, recursión, memoización
 4. **Implementación completa**: Todos los algoritmos requeridos están implementados y funcionando
 
+### 📝 **ANÁLISIS DE COMPLEJIDAD DETALLADO**
+
+#### **Algoritmos Polinomiales** (Eficientes)
+- **BFS/DFS**: O(V + E) - Lineal en el tamaño del grafo ✅
+- **Quicksort/Mergesort**: O(n log n) - Casi lineal ✅
+- **Dijkstra/Prim/Kruskal**: O((V + E) log V) o O(E log E) - Polinomial ✅
+- **Greedy TSP**: O(n²) - Cuadrático ✅
+
+#### **Algoritmos Exponenciales** (Costosos pero necesarios)
+- **Programación Dinámica TSP**: O(n² × 2^n) - Exponencial pero mejor que O(n!)
+- **Backtracking**: O(b^d) - Puede ser exponencial sin restricciones
+- **Branch & Bound**: O(b^d) - Exponencial en peor caso, pero mejorado con podas
+
+#### **Comparación de Eficiencia**
+1. **Ordenamiento**: Mergesort garantiza O(n log n), Quicksort es más rápido en promedio pero O(n²) en peor caso
+2. **Grafos**: BFS/DFS son los más eficientes O(V + E), Dijkstra es ligeramente más costoso por la cola de prioridad
+3. **MST**: Kruskal es mejor para grafos dispersos, Prim para grafos densos
+4. **TSP**: Greedy es rápido O(n²) pero no óptimo, Programación Dinámica es óptima pero exponencial
+
 ### 📝 **RECOMENDACIONES (Opcionales)**
 
-1. **Complejidad temporal**: Podrías agregar comentarios sobre la complejidad de cada algoritmo en el código
-2. **Análisis de recurrencias**: Para Quicksort y Mergesort, podrías documentar el análisis de recurrencias visto en clase
-3. **Comparación de algoritmos**: Podrías agregar una comparación entre Prim y Kruskal (ambos dan el mismo resultado pero con diferentes enfoques)
+1. ✅ **Complejidad temporal**: Ya documentada en este checklist
+2. ✅ **Análisis de recurrencias**: Documentado para Quicksort y Mergesort
+3. ✅ **Comparación de algoritmos**: Incluida en la sección de complejidad
 
 ---
 

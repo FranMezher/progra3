@@ -118,7 +118,7 @@ Invoke-WebRequest -Uri "http://localhost:8080/api/algorithms/prim"
 
 ## 📝 Datos de Ejemplo
 
-### 8 Ubicaciones Argentinas (sin tildes)
+### 15 Ubicaciones Argentinas (sin tildes) - GRAFO COMPLETO
 - Buenos Aires
 - Cordoba
 - Rosario
@@ -127,18 +127,23 @@ Invoke-WebRequest -Uri "http://localhost:8080/api/algorithms/prim"
 - Mar del Plata
 - Tucuman
 - Salta
+- San Juan
+- Santa Fe
+- Parana
+- Bahia Blanca
+- Neuquen
+- Comodoro Rivadavia
+- Rio Cuarto
 
-### 20 Relaciones Bidireccionales (10 rutas × 2 direcciones)
-- Buenos Aires ↔ Cordoba (700 km)
-- Buenos Aires ↔ Rosario (300 km)
-- Buenos Aires ↔ La Plata (60 km)
-- Buenos Aires ↔ Mar del Plata (400 km)
-- Rosario ↔ Cordoba (400 km)
-- Cordoba ↔ Mendoza (400 km)
-- Cordoba ↔ Tucuman (500 km)
-- Tucuman ↔ Salta (200 km)
-- La Plata ↔ Mar del Plata (400 km)
-- Rosario ↔ La Plata (350 km)
+### Grafo Conexo (no completo) - Optimizado para evitar OutOfMemoryError
+**Estrategia**: Cada ciudad está conectada con sus 5 vecinos más cercanos
+- Total de rutas: aproximadamente 30-40 rutas bidireccionales (depende de las distancias)
+- Total de conexiones: aproximadamente 60-80 (cada ruta tiene ida y vuelta)
+- **Ventaja**: Grafo conexo pero manejable, evita problemas de memoria
+- Distancias calculadas automáticamente usando la fórmula de Haversine
+- Duración estimada: basada en velocidad promedio de 80 km/h
+- Costo aproximado: $0.10 por km
+- **Nota**: Cambiado de grafo completo a grafo conexo para evitar OutOfMemoryError en algoritmos como DFS y Backtracking
 
 ---
 
